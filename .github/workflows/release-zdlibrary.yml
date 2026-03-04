@@ -1,0 +1,46 @@
+name: Release ZDLibrary
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Version Tag (e.g. 1.0.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build ZDLibrary ZIP
+        run: |
+          mkdir -p zdlibrary_staging/ZDLibrary/src/handler
+          mkdir -p zdlibrary_staging/ZDLibrary/data/fonts
+
+          cp main.js zdlibrary_staging/ZDLibrary/main.js
+          cp src/handler/zdlibrary.js zdlibrary_staging/ZDLibrary/src/handler/zdlibrary.js
+          cp src/handler/AsciiMaker.js zdlibrary_staging/ZDLibrary/src/handler/AsciiMaker.js
+          cp src/handler/DisplayComponents.js zdlibrary_staging/ZDLibrary/src/handler/DisplayComponents.js
+          cp data/fonts/ANSI\ Shadow.json zdlibrary_staging/ZDLibrary/data/fonts/ANSI\ Shadow.json
+
+          cd zdlibrary_staging
+          zip -r ../zdlibrary.zip ZDLibrary/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version_tag }}
+          name: "ZDLibrary - ${{ github.event.inputs.version_tag }}"
+          body: |
+            ## Description
+
+            Download the plugin below!
+          files: zdlibrary.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
