@@ -112,12 +112,12 @@ module.exports = class DisplayComponents {
 
 						button.setLabel(String(this.replacePlaceholders(acc.Label, placeholders)));
 						
-						const url = acc.URL || acc.Url;
+						const url = acc.URL;
 						if (url) {
 							button.setStyle(ButtonStyle.Link);
 							button.setURL(String(this.replacePlaceholders(url, placeholders)));
 						} else {
-							this.heart.core.util.discord.convertButtonColor(button, (acc.Style || 'primary').toLowerCase());
+							this.heart.core.util.discord.convertButtonColor(button.toLowerCase());
 							if (acc.CustomId) button.setCustomId(String(this.replacePlaceholders(acc.CustomId, placeholders)));
 						}
 
