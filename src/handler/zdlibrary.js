@@ -27,17 +27,21 @@ module.exports = class zdLibraryHandler extends handler {
 	resolveDisplayComponents(config, placeholders = {}, guild = null, user = null) {
 		if (!config) return null;
 		
+		let res = { embeds: [this.heart.core.util.discord.resolveEmbed(config.ComponentsV1, placeholders, guild, user)] };
+
 		if (config.ComponentsV2) {
-			const res = this.displayComponents.resolveDisplayComponents(config, placeholders, guild, user);
-			return {
-				components: res.components,
+			const resolved = this.displayComponents.resolveDisplayComponents(config, placeholders, guild, user);
+			res = {
+				components: resolved.components,
 				flags: MessageFlags.IsComponentsV2
 			};
 		}
 
-		return { 
-			embeds: [this.heart.core.util.discord.resolveEmbed(config.ComponentsV1, placeholders, guild, user)] 
-		};
+		if (config.Ephemeral) {
+			res.flags = (res.flags || 0) | MessageFlags.Ephemeral;
+		}
+
+		return res;
 	}
 
 	buildContainerFromConfig(config, placeholders = {}, guild = null, user = null) {
