@@ -8,6 +8,7 @@ module.exports = class ZDLibrary extends plugin {
 			author: 'Zero Development',
 			version: '1.0.0.0',
 			priority: 25,
+			requiredAthenaVersion: '2.5.0',
 			dependencies: ['core'],
 			softDependencies: [],
 			nodeDependencies: [],
