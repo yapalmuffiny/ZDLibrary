@@ -1,183 +1,191 @@
 const { ContainerBuilder, ButtonStyle } = require('@discordjs/builders');
 
 module.exports = class DisplayComponents {
-  constructor(heart) {
-    this.heart = heart;
-  }
+	constructor(heart) {
+		this.heart = heart;
+		this.EMOJI_PATTERN_REGEX = /<a?:[^:]+:(\d+)>/;
+		this.DIGITS_ONLY_REGEX = /^\d+$/;
+	}
 
-  resolveDisplayComponents(componentConfig, placeholders = {}, guild = null, user = null) {
-    const allPlaceholders = this.buildPlaceholders(placeholders, guild, user);
-    const components = componentConfig.ComponentsV2.Components
-      .filter(c => c.Type.toLowerCase() === 'container')
-      .map((c, i) => this.buildContainer(c, i, allPlaceholders).toJSON());
-    return { components };
-  }
+	resolveDisplayComponents(componentConfig, placeholders = {}, guild = null, user = null) {
+		const allPlaceholders = this.buildPlaceholders(placeholders, guild, user);
+		const components = componentConfig.ComponentsV2.Components
+			.filter(c => c.Type.toLowerCase() === 'container')
+			.map((c, i) => this.buildContainer(c, i, allPlaceholders).toJSON());
+		return { components };
+	}
 
-  buildPlaceholders(custom = {}, guild = null, user = null) {
-    const now = new Date();
-    const result = { ...custom };
+	buildPlaceholders(custom = {}, guild = null, user = null) {
+		const now = new Date();
+		const result = { ...custom };
 
-    if (user) {
-      Object.assign(result, {
-        user: user.username,
-        userName: user.username,
-        userDisplay: user.displayName,
-        userId: user.id,
-        userMention: `<@${user.id}>`,
-        userAvatar: user.displayAvatarURL({ dynamic: true, size: 256 }),
-        userCreated: user.createdAt.toLocaleDateString(),
-      });
-    }
+		if (user) {
+			Object.assign(result, {
+				user: user.username,
+				userName: user.username,
+				userDisplay: user.displayName,
+				userId: user.id,
+				userMention: `<@${user.id}>`,
+				userAvatar: user.displayAvatarURL({ dynamic: true, size: 256 }),
+				userCreated: user.createdAt.toLocaleDateString(),
+			});
+		}
 
-    if (guild) {
-      Object.assign(result, {
-        guild: guild.name,
-        guildName: guild.name,
-        guildId: guild.id,
-        guildIcon: guild.iconURL({ dynamic: true, size: 256 }),
-        memberCount: guild.memberCount,
-        memberCountNumeric: guild.memberCount,
-      });
-    }
+		if (guild) {
+			Object.assign(result, {
+				guild: guild.name,
+				guildName: guild.name,
+				guildId: guild.id,
+				guildIcon: guild.iconURL({ dynamic: true, size: 256 }),
+				memberCount: guild.memberCount,
+				memberCountNumeric: guild.memberCount,
+			});
+		}
 
-    Object.assign(result, {
-      currentDate: now.toLocaleDateString(),
-      currentTime: now.toLocaleTimeString(),
-      currentDatetime: now.toLocaleString(),
-    });
+		Object.assign(result, {
+			currentDate: now.toLocaleDateString(),
+			currentTime: now.toLocaleTimeString(),
+			currentDatetime: now.toLocaleString(),
+		});
 
-    return result;
-  }
+		return result;
+	}
 
-  fill(text, placeholders) {
-    return this.heart.core.util.discord.resolvePlaceholder(text, placeholders);
-  }
+	fill(text, placeholders) {
+		return this.heart.core.util.discord.resolvePlaceholder(text, placeholders);
+	}
 
-  buildContainer(config, index, placeholders = {}) {
-    const builder = new ContainerBuilder();
-    const color = this.parseColor(this.fill(config.AccentColor, placeholders));
+	buildContainer(config, index, placeholders = {}) {
+		const builder = new ContainerBuilder();
+		const color = this.parseColor(this.fill(config.AccentColor, placeholders));
 
-    builder.setAccentColor(color);
-    if (config.Spoiler) builder.setSpoiler(true);
+		builder.setAccentColor(color);
+		if (config.Spoiler) builder.setSpoiler(true);
 
-    for (const component of config.Components ?? []) {
-      this.addComponent(builder, component, placeholders);
-    }
+		for (const component of config.Components ?? []) {
+			this.addComponent(builder, component, placeholders);
+		}
 
-    return builder;
-  }
+		return builder;
+	}
 
-  addComponent(builder, component, placeholders = {}) {
-    if (!component?.Type) return;
+	addComponent(builder, component, placeholders = {}) {
+		if (!component?.Type) return;
 
-    const type = component.Type.toLowerCase();
-    if (type === 'section' && !component.Accessory) {
-      if (component.Text) this.addTextDisplay(builder, { Content: component.Text.Content }, placeholders);
-      return;
-    }
+		const type = component.Type.toLowerCase();
 
-    switch (type) {
-      case 'section':      return this.addSection(builder, component, placeholders);
-      case 'text_display': return this.addTextDisplay(builder, component, placeholders);
-      case 'separator':    return this.addSeparator(builder, component);
-      case 'file':         return this.addFile(builder, component, placeholders);
-    }
-  }
+		if (type === 'section' && !component.Accessory) {
+			if (component.Text) this.addTextDisplay(builder, { Content: component.Text.Content }, placeholders);
+			return;
+		}
 
-  addSection(builder, component, placeholders) {
-    builder.addSectionComponents(section => {
-      section.addTextDisplayComponents(t => {
-        t.setContent(String(this.fill(component.Text.Content, placeholders)));
-        return t;
-      });
+		switch (type) {
+			case 'section':      return this.addSection(builder, component, placeholders);
+			case 'text_display': return this.addTextDisplay(builder, component, placeholders);
+			case 'separator':    return this.addSeparator(builder, component);
+			case 'file':         return this.addFile(builder, component, placeholders);
+		}
+	}
 
-      const acc = component.Accessory;
-      if (!acc?.Type) return section;
+	addSection(builder, component, placeholders) {
+		builder.addSectionComponents(section => {
+			section.addTextDisplayComponents(t => {
+				t.setContent(String(this.fill(component.Text.Content, placeholders)));
+				return t;
+			});
 
-      const accType = acc.Type.toLowerCase();
+			const acc = component.Accessory;
+			if (!acc?.Type) return section;
 
-      if (accType === 'thumbnail' && acc.Media) {
-        section.setThumbnailAccessory(t => {
-          t.setURL(String(this.fill(acc.Media.URL, placeholders)));
-          return t;
-        });
-      }
+			const accType = acc.Type.toLowerCase();
 
-      if (accType === 'button') {
-        section.setButtonAccessory(button => {
-          button.setLabel(String(this.fill(acc.Label, placeholders)));
+			if (accType === 'thumbnail' && acc.Media) {
+				section.setThumbnailAccessory(t => {
+					t.setURL(String(this.fill(acc.Media.URL, placeholders)));
+					return t;
+				});
+			}
 
-          const url = acc.URL ?? acc.Url;
-          if (url) {
-            button.setStyle(ButtonStyle.Link);
-            button.setURL(String(this.fill(url, placeholders)));
-          } else {
-            this.heart.core.util.discord.convertButtonColor(button, (acc.Style ?? 'primary').toLowerCase());
-            if (acc.CustomId) button.setCustomId(String(this.fill(acc.CustomId, placeholders)));
-          }
+			if (accType === 'button') {
+				section.setButtonAccessory(button => {
+					button.setLabel(String(this.fill(acc.Label, placeholders)));
 
-          if (acc.Emoji) {
-            const emoji = this.parseEmoji(this.fill(acc.Emoji, placeholders));
-            if (emoji) button.setEmoji(emoji);
-          }
+					const url = acc.URL ?? acc.Url;
+					if (url) {
+						button.setStyle(ButtonStyle.Link);
+						button.setURL(String(this.fill(url, placeholders)));
+					} else {
+						this.heart.core.util.discord.convertButtonColor(button, (acc.Style ?? 'primary').toLowerCase());
+						if (acc.CustomId) button.setCustomId(String(this.fill(acc.CustomId, placeholders)));
+					}
 
-          if (acc.Disabled) button.setDisabled(true);
-          return button;
-        });
-      }
+					if (acc.Emoji) {
+						const emoji = this.parseEmoji(this.fill(acc.Emoji, placeholders));
+						if (emoji) button.setEmoji(emoji);
+					}
 
-      return section;
-    });
-  }
+					if (acc.Disabled) button.setDisabled(true);
+					return button;
+				});
+			}
 
-  addTextDisplay(builder, component, placeholders) {
-    if (!component?.Content) return;
-    builder.addTextDisplayComponents(t => {
-      t.setContent(String(this.fill(component.Content, placeholders)));
-      return t;
-    });
-  }
+			return section;
+		});
+	}
 
-  addSeparator(builder, component) {
-    const spacingMap = { small: 1, large: 2 };
-    builder.addSeparatorComponents(s => {
-      s.setDivider(!!component.Divider);
-      if (component.Spacing) s.setSpacing(spacingMap[component.Spacing.toLowerCase()]);
-      return s;
-    });
-  }
+	addTextDisplay(builder, component, placeholders) {
+		if (!component?.Content) return;
+		builder.addTextDisplayComponents(t => {
+			t.setContent(String(this.fill(component.Content, placeholders)));
+			return t;
+		});
+	}
 
-  addFile(builder, component, placeholders) {
-    const url = component.URL ?? component.Url;
-    builder.addFileComponents(f => {
-      f.setURL(String(this.fill(url, placeholders)));
-      if (component.Spoiler) f.setSpoiler(true);
-      return f;
-    });
-  }
+	addSeparator(builder, component) {
+		const SPACING = { small: 1, large: 2 };
+		builder.addSeparatorComponents(s => {
+			s.setDivider(!!component.Divider);
+			if (component.Spacing) {
+				const spacing = SPACING[component.Spacing.toLowerCase()];
+				if (spacing) s.setSpacing(spacing);
+			}
+			return s;
+		});
+	}
 
-  parseColor(color) {
-    if (!color) return 0;
-    const hex = this.heart.core.util.discord.resolveColors(String(color));
-    return hex ? parseInt(hex.replace('#', ''), 16) : 0;
-  }
+	addFile(builder, component, placeholders) {
+		const url = component.URL ?? component.Url;
+		builder.addFileComponents(f => {
+			f.setURL(String(this.fill(url, placeholders)));
+			if (component.Spoiler) f.setSpoiler(true);
+			return f;
+		});
+	}
 
-  parseEmoji(emoji) {
-    if (!emoji) return null;
-    if (typeof emoji === 'object' && (emoji.id || emoji.name)) return emoji;
+	parseColor(color) {
+		if (!color) return 0;
+		const hex = this.heart.core.util.discord.resolveColors(String(color));
+		if (!hex) return 0;
+		const numericColor = parseInt(hex.replace('#', ''), 16);
+		return numericColor;
+	}
 
-    const str = String(emoji);
-    const custom = str.match(/<a?:[^:]+:(\d+)>/);
-    if (custom) return { id: custom[1] };
-    if (/^\d+$/.test(str)) return { id: str };
-    if (/\p{Emoji}/u.test(str)) return str;
+	parseEmoji(emoji) {
+		if (!emoji) return null;
+		if (typeof emoji === 'object' && (emoji.id || emoji.name)) return emoji;
 
-    return null;
-  }
+		const str = String(emoji);
+		const custom = str.match(this.EMOJI_PATTERN_REGEX);
+		if (custom) return { id: custom[1] };
+		if (this.DIGITS_ONLY_REGEX.test(str)) return { id: str };
+		if (/\p{Emoji}/u.test(str)) return str;
 
-  buildContainerFromConfig(config, placeholders = {}, guild = null, user = null) {
-    const all = this.buildPlaceholders(placeholders, guild, user);
-    const container = config.ComponentsV2.Components.find(c => c.Type.toLowerCase() === 'container');
-    return container ? this.buildContainer(container, 0, all) : null;
-  }
+		return null;
+	}
+
+	buildContainerFromConfig(config, placeholders = {}, guild = null, user = null) {
+		const all = this.buildPlaceholders(placeholders, guild, user);
+		const container = config.ComponentsV2.Components.find(c => c.Type.toLowerCase() === 'container');
+		return container ? this.buildContainer(container, 0, all) : null;
+	}
 };
